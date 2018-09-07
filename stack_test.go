@@ -156,12 +156,12 @@ func TestStackTrace(t *testing.T) {
 				"\t.+/github.com/pkg/errors/stack_test.go:154",
 		},
 	}, {
-		Wrap(New("ooh"), "ahh"), []string{
+		Annotate(New("ooh"), "ahh"), []string{
 			"github.com/pkg/errors.TestStackTrace\n" +
 				"\t.+/github.com/pkg/errors/stack_test.go:159", // this is the stack of Wrap, not New
 		},
 	}, {
-		Cause(Wrap(New("ooh"), "ahh")), []string{
+		Cause(Annotate(New("ooh"), "ahh")), []string{
 			"github.com/pkg/errors.TestStackTrace\n" +
 				"\t.+/github.com/pkg/errors/stack_test.go:164", // this is the stack of New
 		},
@@ -187,14 +187,17 @@ func TestStackTrace(t *testing.T) {
 		},
 	}}
 	for i, tt := range tests {
-		x, ok := tt.err.(interface {
+		ste, ok := tt.err.(interface {
 			StackTrace() StackTrace
 		})
 		if !ok {
-			t.Errorf("expected %#v to implement StackTrace() StackTrace", tt.err)
-			continue
+			ste = tt.err.(interface {
+				Cause() error
+			}).Cause().(interface {
+				StackTrace() StackTrace
+			})
 		}
-		st := x.StackTrace()
+		st := ste.StackTrace()
 		for j, want := range tt.want {
 			testFormatRegexp(t, i, st[j], "%+v", want)
 		}
@@ -253,19 +256,19 @@ func TestStackTraceFormat(t *testing.T) {
 	}, {
 		stackTrace()[:2],
 		"%v",
-		`\[stack_test.go:207 stack_test.go:254\]`,
+		`[stack_test.go:207 stack_test.go:254]`,
 	}, {
 		stackTrace()[:2],
 		"%+v",
 		"\n" +
 			"github.com/pkg/errors.stackTrace\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go:207\n" +
+			"\t.+/github.com/pkg/errors/stack_test.go:210\n" +
 			"github.com/pkg/errors.TestStackTraceFormat\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go:258",
+			"\t.+/github.com/pkg/errors/stack_test.go:261",
 	}, {
 		stackTrace()[:2],
 		"%#v",
-		`\[\]errors.Frame{stack_test.go:207, stack_test.go:266}`,
+		`\[\]errors.Frame{stack_test.go:210, stack_test.go:269}`,
 	}}
 
 	for i, tt := range tests {
