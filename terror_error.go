@@ -16,6 +16,8 @@ package errors
 import (
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"runtime"
 	"strconv"
 	"strings"
@@ -316,4 +318,12 @@ func (e *Error) GenWithStackByCause(args ...interface{}) error {
 	err.args = args
 	err.fillLineAndFile(1)
 	return AddStack(&err)
+}
+
+func CauseError(err *Error) zap.Field {
+	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenWithCause()}
+}
+
+func DetailError(err *Error) zap.Field {
+	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenByArgs()}
 }
