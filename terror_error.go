@@ -16,11 +16,12 @@ package errors
 import (
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Error is the 'prototype' of a type of errors.
