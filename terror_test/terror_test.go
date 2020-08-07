@@ -39,6 +39,7 @@ var (
 	ClassParser    = reg.RegisterErrorClass(11, "parser")
 	ClassServer    = reg.RegisterErrorClass(15, "server")
 	ClassTable     = reg.RegisterErrorClass(19, "table")
+	ClassMember    = reg.RegisterErrorClass(20, "member")
 )
 
 const (
@@ -338,4 +339,12 @@ func (*testTErrorSuite) TestLineAndFile(c *C) {
 	file2, line2 := terr2.Location()
 	c.Assert(file2, Equals, f2)
 	c.Assert(line2, Equals, l2-1)
+}
+
+func (*testTErrorSuite) TestWarpAndField(c *C) {
+	causeErr := errors.New("load from etcd meet error")
+	ErrGetLeader := ClassMember.DefineError().TextualCode("ErrGetLeader").MessageTemplate("fail to get leader").Build()
+	errWithWarpedCause := ErrGetLeader.WarpCauseError(causeErr)
+	c.Assert(errWithWarpedCause.FastGenWithCause().Error(), Equals, "[DB:member:ErrGetLeader] load from etcd meet error")
+	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[DB:member:ErrGetLeader] fail to get leader")
 }

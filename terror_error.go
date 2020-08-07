@@ -61,9 +61,11 @@ type Error struct {
 	// and the more detail this field explaining the better,
 	// even some guess of the cause could be included.
 	Description string
-	args        []interface{}
-	file        string
-	line        int
+	// Cause is used to warp some third party error.
+	cause error
+	args  []interface{}
+	file  string
+	line  int
 }
 
 // Class returns ErrClass
@@ -290,4 +292,28 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 		registry:    &Registry{Name: regName},
 	}
 	return nil
+}
+
+func (e *Error) WarpCauseError(err error) *Error {
+	e.cause = err
+	return e
+}
+
+func (e *Error) Cause() error {
+	return e.cause
+}
+
+func (e *Error) FastGenWithCause(args ...interface{}) error {
+	err := *e
+	err.message = e.cause.Error()
+	err.args = args
+	return SuspendStack(&err)
+}
+
+func (e *Error) GenWithStackByCause(args ...interface{}) error {
+	err := *e
+	err.message = e.cause.Error()
+	err.args = args
+	err.fillLineAndFile(1)
+	return AddStack(&err)
 }
