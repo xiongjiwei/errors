@@ -297,13 +297,17 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e *Error) WarpCauseError(err error) *Error {
+func (e *Error) Warp(err error) *Error {
 	e.cause = err
 	return e
 }
 
 func (e *Error) Cause() error {
-	return e.cause
+	root := Unwrap(e.cause)
+	if root == nil {
+		return e.cause
+	}
+	return root
 }
 
 func (e *Error) FastGenWithCause(args ...interface{}) error {
