@@ -297,7 +297,7 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e *Error) Warp(err error) *Error {
+func (e *Error) Wrap(err error) *Error {
 	e.cause = err
 	return e
 }
