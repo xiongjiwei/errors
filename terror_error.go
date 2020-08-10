@@ -24,6 +24,16 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// ErrCode represents a specific error type in a error class.
+// Same error code can be used in different error classes.
+type ErrCode int
+
+// ErrCodeText is a textual error code that represents a specific error type in a error class.
+type ErrCodeText string
+
+type ErrorID string
+type RFCErrorCode string
+
 // Error is the 'prototype' of a type of errors.
 // Use DefineError to make a *Error:
 // var ErrUnavailable = ClassRegion.DefineError().
@@ -49,8 +59,7 @@ import (
 //     // handle this error.
 // }
 type Error struct {
-	class *ErrClass
-	code  ErrCode
+	code ErrCode
 	// codeText is the textual describe of the error code
 	codeText ErrCodeText
 	// message is a template of the description of this error.
@@ -71,11 +80,6 @@ type Error struct {
 	line  int
 }
 
-// Class returns ErrClass
-func (e *Error) Class() *ErrClass {
-	return e.class
-}
-
 // Code returns the numeric code of this error.
 // ID() will return textual error if there it is,
 // when you just want to get the purely numeric error
@@ -89,23 +93,7 @@ func (e *Error) Code() ErrCode {
 // The error code is a 3-tuple of abbreviated component name, error class and error code,
 // joined by a colon like {Component}:{ErrorClass}:{InnerErrorCode}.
 func (e *Error) RFCCode() RFCErrorCode {
-	ec := e.Class()
-	if ec == nil {
-		return RFCErrorCode(e.ID())
-	}
-	reg := ec.registry
-	// Maybe top-level errors.
-	if reg.Name == "" {
-		return RFCErrorCode(fmt.Sprintf("%s:%s",
-			ec.Description,
-			e.ID(),
-		))
-	}
-	return RFCErrorCode(fmt.Sprintf("%s:%s:%s",
-		reg.Name,
-		ec.Description,
-		e.ID(),
-	))
+	return RFCErrorCode(e.ID())
 }
 
 // ID returns the ID of this error.
@@ -127,16 +115,50 @@ func (e *Error) MessageTemplate() string {
 	return e.message
 }
 
+// NewError creates a standard error object.
+func NewError(code int, message string) *Error {
+	return &Error{
+		code:    ErrCode(code),
+		message: message,
+	}
+}
+
+// NewErrorWithText creates a standard error object using text error code.
+func NewErrorWithText(code string, message string) *Error {
+	return &Error{
+		codeText: ErrCodeText(code),
+		message:  message,
+	}
+}
+
+// SetWorkaround sets the workaround for standard error.
+func (e *Error) SetWorkaround(workaround string) *Error {
+	e.Workaround = workaround
+	return e
+}
+
+// SetWorkaround sets the description for standard error.
+func (e *Error) SetDescription(description string) *Error {
+	e.Description = description
+	return e
+}
+
+// SetErrCodeText sets the text error code for standard error.
+func (e *Error) SetErrCodeText(codeText string) *Error {
+	e.codeText = ErrCodeText(codeText)
+	return e
+}
+
 // Error implements error interface.
 func (e *Error) Error() string {
 	describe := e.codeText
 	if len(describe) == 0 {
 		describe = ErrCodeText(strconv.Itoa(int(e.code)))
 	}
-	return fmt.Sprintf("[%s] %s", e.RFCCode(), e.getMsg())
+	return fmt.Sprintf("[%s] %s", e.RFCCode(), e.GetMsg())
 }
 
-func (e *Error) getMsg() string {
+func (e *Error) GetMsg() string {
 	if len(e.args) > 0 {
 		return fmt.Sprintf(e.message, e.args...)
 	}
@@ -202,9 +224,8 @@ func (e *Error) Equal(err error) bool {
 	if !ok {
 		return false
 	}
-	classEquals := e.class.Equal(inErr.class)
 	idEquals := e.ID() == inErr.ID()
-	return classEquals && idEquals
+	return idEquals
 }
 
 // NotEqual checks if err is not equal to e.
@@ -244,7 +265,6 @@ type jsonError struct {
 	Error       string       `json:"message"`
 	Description string       `json:"description,omitempty"`
 	Workaround  string       `json:"workaround,omitempty"`
-	Class       ErrClassID   `json:"classID"`
 	File        string       `json:"file"`
 	Line        int          `json:"line"`
 }
@@ -256,11 +276,10 @@ type jsonError struct {
 // This function is reserved for compatibility.
 func (e *Error) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&jsonError{
-		Error:       e.getMsg(),
+		Error:       e.GetMsg(),
 		Description: e.Description,
 		Workaround:  e.Workaround,
 		RFCCode:     e.RFCCode(),
-		Class:       e.class.ID,
 		Line:        e.line,
 		File:        e.file,
 	})
@@ -278,9 +297,7 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 		return Trace(err)
 	}
 	codes := strings.Split(string(err.RFCCode), ":")
-	regName := codes[0]
-	className := codes[1]
-	innerCode := codes[2]
+	innerCode := codes[0]
 	if i, errAtoi := strconv.Atoi(innerCode); errAtoi == nil {
 		e.code = ErrCode(i)
 	} else {
@@ -289,11 +306,6 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	e.line = err.Line
 	e.file = err.File
 	e.message = err.Error
-	e.class = &ErrClass{
-		Description: className,
-		ID:          err.Class,
-		registry:    &Registry{Name: regName},
-	}
 	return nil
 }
 
