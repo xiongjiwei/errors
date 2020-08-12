@@ -311,27 +311,37 @@ func (e *Error) GenWithStackByCause(args ...interface{}) error {
 
 type NormalizeOption func(*Error)
 
+// Description returns a NormalizeOption to set description.
 func Description(desc string) NormalizeOption {
 	return func(e *Error) {
 		e.description = desc
 	}
 }
 
+// Workaround returns a NormalizeOption to set workaround.
 func Workaround(wr string) NormalizeOption {
 	return func(e *Error) {
 		e.workaround = wr
 	}
 }
 
+// RFCCodeText returns a NormalizeOption to set RFC error code.
 func RFCCodeText(codeText string) NormalizeOption {
 	return func(e *Error) {
 		e.codeText = ErrCodeText(codeText)
 	}
 }
 
-func Normalize(code int, message string, opts ...NormalizeOption) *Error {
+// MySQLErrorCode returns a NormalizeOption to set error code.
+func MySQLErrorCode(code int) NormalizeOption {
+	return func(e *Error) {
+		e.code = ErrCode(code)
+	}
+}
+
+// Normalize creates a new Error object.
+func Normalize(message string, opts ...NormalizeOption) *Error {
 	e := &Error{
-		code:    ErrCode(code),
 		message: message,
 	}
 	for _, opt := range opts {
@@ -340,10 +350,12 @@ func Normalize(code int, message string, opts ...NormalizeOption) *Error {
 	return e
 }
 
+// CauseError returns zap.Field contains cause error.
 func CauseError(err *Error) zap.Field {
 	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenWithCause()}
 }
 
+// CauseError returns zap.Field contains error.
 func DetailError(err *Error) zap.Field {
 	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenByArgs()}
 }

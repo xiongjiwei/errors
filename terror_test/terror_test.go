@@ -48,7 +48,7 @@ func (s *testTErrorSuite) TestErrCode(c *C) {
 }
 
 func (s *testTErrorSuite) TestJson(c *C) {
-	prevTErr := errors.NewError(int(CodeExecResultIsEmpty), "json test")
+	prevTErr := errors.Normalize("json test", errors.MySQLErrorCode(int(CodeExecResultIsEmpty)))
 	buf, err := json.Marshal(prevTErr)
 	c.Assert(err, IsNil)
 	var curTErr errors.Error
@@ -58,8 +58,8 @@ func (s *testTErrorSuite) TestJson(c *C) {
 	c.Assert(isEqual, IsTrue)
 }
 
-var predefinedErr = errors.NewError(123, "predefiend error")
-var predefinedTextualErr = errors.NewErrorWithText("executor:ExecutorAbsent", "executor is taking vacation at %s")
+var predefinedErr = errors.Normalize("predefiend error", errors.MySQLErrorCode(123))
+var predefinedTextualErr = errors.Normalize("executor is taking vacation at %s", errors.RFCCodeText("executor:ExecutorAbsent"))
 
 func example() error {
 	err := call()
@@ -131,11 +131,11 @@ func (s *testTErrorSuite) TestNewError(c *C) {
 }
 
 func (s *testTErrorSuite) TestRFCCode(c *C) {
-	c1err1 := errors.NewErrorWithText("TestErr1:Err1", "nothing")
-	c2err2 := errors.NewErrorWithText("TestErr2:Err2", "nothing")
+	c1err1 := errors.Normalize("nothing", errors.RFCCodeText("TestErr1:Err1"))
+	c2err2 := errors.Normalize("nothing", errors.RFCCodeText("TestErr2:Err2"))
 	c.Assert(c1err1.RFCCode(), Equals, errors.RFCErrorCode("TestErr1:Err1"))
 	c.Assert(c2err2.RFCCode(), Equals, errors.RFCErrorCode("TestErr2:Err2"))
-	berr := errors.NewErrorWithText("Blank:B1", "nothing").SetWorkaround(`Do nothing`)
+	berr := errors.Normalize("nothing", errors.RFCCodeText("Blank:B1"), errors.Workaround(`Do nothing`))
 	c.Assert(berr.RFCCode(), Equals, errors.RFCErrorCode("Blank:B1"))
 }
 
@@ -159,8 +159,8 @@ func (*testTErrorSuite) TestLineAndFile(c *C) {
 
 func (*testTErrorSuite) TestWarpAndField(c *C) {
 	causeErr := errors.New("load from etcd meet error")
-	ErrGetLeader := errors.NewErrorWithText("member:ErrGetLeader", "fail to get leader")
+	ErrGetLeader := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
 	errWithWarpedCause := ErrGetLeader.Wrap(causeErr)
 	c.Assert(errWithWarpedCause.FastGenWithCause().Error(), Equals, "[member:ErrGetLeader] load from etcd meet error")
-	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[member:ErrGetLeader] fail to get leader")
+	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[member:ErrGetLeader] load from etcd meet error")
 }
