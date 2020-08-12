@@ -67,12 +67,12 @@ type Error struct {
 	message string
 	// The workaround field: how to work around this error.
 	// It's used to teach the users how to solve the error if occurring in the real environment.
-	Workaround string
+	workaround string
 	// Description is the expanded detail of why this error occurred.
 	// This could be written by developer at a static env,
 	// and the more detail this field explaining the better,
 	// even some guess of the cause could be included.
-	Description string
+	description string
 	// Cause is used to warp some third party error.
 	cause error
 	args  []interface{}
@@ -113,34 +113,6 @@ func (e *Error) Location() (file string, line int) {
 // MessageTemplate returns the error message template of this error.
 func (e *Error) MessageTemplate() string {
 	return e.message
-}
-
-// NewError creates a standard error object.
-func NewError(code int, message string) *Error {
-	return &Error{
-		code:    ErrCode(code),
-		message: message,
-	}
-}
-
-// NewErrorWithText creates a standard error object using text error code.
-func NewErrorWithText(code string, message string) *Error {
-	return &Error{
-		codeText: ErrCodeText(code),
-		message:  message,
-	}
-}
-
-// SetWorkaround sets the workaround for standard error.
-func (e *Error) SetWorkaround(workaround string) *Error {
-	e.Workaround = workaround
-	return e
-}
-
-// SetWorkaround sets the description for standard error.
-func (e *Error) SetDescription(description string) *Error {
-	e.Description = description
-	return e
 }
 
 // SetErrCodeText sets the text error code for standard error.
@@ -277,8 +249,8 @@ type jsonError struct {
 func (e *Error) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&jsonError{
 		Error:       e.GetMsg(),
-		Description: e.Description,
-		Workaround:  e.Workaround,
+		Description: e.description,
+		Workaround:  e.workaround,
 		RFCCode:     e.RFCCode(),
 		Line:        e.line,
 		File:        e.file,
@@ -335,6 +307,37 @@ func (e *Error) GenWithStackByCause(args ...interface{}) error {
 	err.args = args
 	err.fillLineAndFile(1)
 	return AddStack(&err)
+}
+
+type NormalizeOption func(*Error)
+
+func Description(desc string) NormalizeOption {
+	return func(e *Error) {
+		e.description = desc
+	}
+}
+
+func Workaround(wr string) NormalizeOption {
+	return func(e *Error) {
+		e.workaround = wr
+	}
+}
+
+func RFCCodeText(codeText string) NormalizeOption {
+	return func(e *Error) {
+		e.codeText = ErrCodeText(codeText)
+	}
+}
+
+func Normalize(code int, message string, opts ...NormalizeOption) *Error {
+	e := &Error{
+		code:    ErrCode(code),
+		message: message,
+	}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
 }
 
 func CauseError(err *Error) zap.Field {
