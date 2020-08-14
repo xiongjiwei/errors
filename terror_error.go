@@ -19,9 +19,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // ErrCode represents a specific error type in a error class.
@@ -348,14 +345,4 @@ func Normalize(message string, opts ...NormalizeOption) *Error {
 		opt(e)
 	}
 	return e
-}
-
-// CauseError returns zap.Field contains cause error.
-func CauseError(err *Error) zap.Field {
-	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenWithCause()}
-}
-
-// CauseError returns zap.Field contains error.
-func DetailError(err *Error) zap.Field {
-	return zap.Field{Key: "error", Type: zapcore.ErrorType, Interface: err.FastGenByArgs()}
 }
