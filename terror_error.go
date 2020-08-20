@@ -266,12 +266,11 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 		return Trace(err)
 	}
 	codes := strings.Split(string(err.RFCCode), ":")
-	innerCode := codes[0]
+	innerCode := codes[len(codes) - 1]
 	if i, errAtoi := strconv.Atoi(innerCode); errAtoi == nil {
 		e.code = ErrCode(i)
-	} else {
-		e.codeText = ErrCodeText(innerCode)
 	}
+	e.codeText = ErrCodeText(err.RFCCode)
 	e.line = err.Line
 	e.file = err.File
 	e.message = err.Error

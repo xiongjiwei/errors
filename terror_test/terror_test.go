@@ -48,7 +48,7 @@ func (s *testTErrorSuite) TestErrCode(c *C) {
 }
 
 func (s *testTErrorSuite) TestJson(c *C) {
-	prevTErr := errors.Normalize("json test", errors.MySQLErrorCode(int(CodeExecResultIsEmpty)))
+	prevTErr := errors.Normalize("json test", errors.MySQLErrorCode(int(CodeExecResultIsEmpty)), errors.RFCCodeText("abc:1105"))
 	buf, err := json.Marshal(prevTErr)
 	c.Assert(err, IsNil)
 	var curTErr errors.Error
