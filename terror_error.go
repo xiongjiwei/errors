@@ -124,7 +124,7 @@ func (e *Error) Error() string {
 	if len(describe) == 0 {
 		describe = ErrCodeText(strconv.Itoa(int(e.code)))
 	}
-	return fmt.Sprintf("[%s] %s", e.RFCCode(), e.GetMsg())
+	return fmt.Sprintf("[%s]%s", e.RFCCode(), e.GetMsg())
 }
 
 func (e *Error) GetMsg() string {
@@ -279,8 +279,9 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 }
 
 func (e *Error) Wrap(err error) *Error {
-	e.cause = err
-	return e
+	newErr := *e
+	newErr.cause = err
+	return &newErr
 }
 
 func (e *Error) Cause() error {

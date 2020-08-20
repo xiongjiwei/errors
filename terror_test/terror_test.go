@@ -127,7 +127,7 @@ func (s *testTErrorSuite) TestNewError(c *C) {
 	today := time.Now().Weekday().String()
 	err := predefinedTextualErr.GenWithStackByArgs(today)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "[executor:ExecutorAbsent] executor is taking vacation at "+today)
+	c.Assert(err.Error(), Equals, "[executor:ExecutorAbsent]executor is taking vacation at "+today)
 }
 
 func (s *testTErrorSuite) TestRFCCode(c *C) {
@@ -161,6 +161,6 @@ func (*testTErrorSuite) TestWarpAndField(c *C) {
 	causeErr := errors.New("load from etcd meet error")
 	ErrGetLeader := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
 	errWithWarpedCause := ErrGetLeader.Wrap(causeErr)
-	c.Assert(errWithWarpedCause.FastGenWithCause().Error(), Equals, "[member:ErrGetLeader] load from etcd meet error")
-	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[member:ErrGetLeader] load from etcd meet error")
+	c.Assert(errWithWarpedCause.FastGenWithCause().Error(), Equals, "[member:ErrGetLeader]load from etcd meet error")
+	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[member:ErrGetLeader]load from etcd meet error")
 }
