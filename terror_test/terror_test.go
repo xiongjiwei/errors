@@ -15,7 +15,6 @@ package terror_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -160,7 +159,6 @@ func (*testTErrorSuite) TestLineAndFile(c *C) {
 func (*testTErrorSuite) TestWarpAndField(c *C) {
 	causeErr := errors.New("load from etcd meet error")
 	ErrGetLeader := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
-	errWithWarpedCause := ErrGetLeader.Wrap(causeErr)
-	c.Assert(errWithWarpedCause.FastGenWithCause().Error(), Equals, "[member:ErrGetLeader] load from etcd meet error")
-	c.Assert(fmt.Sprintf("%v", errWithWarpedCause.FastGenWithCause()), Equals, "[member:ErrGetLeader] load from etcd meet error")
+	errWithWarpedCause := errors.Annotate(ErrGetLeader, causeErr.Error())
+	c.Assert(errWithWarpedCause.Error(), Equals, "load from etcd meet error: [member:ErrGetLeader] fail to get leader")
 }

@@ -112,12 +112,6 @@ func (e *Error) MessageTemplate() string {
 	return e.message
 }
 
-// SetErrCodeText sets the text error code for standard error.
-func (e *Error) SetErrCodeText(codeText string) *Error {
-	e.codeText = ErrCodeText(codeText)
-	return e
-}
-
 // Error implements error interface.
 func (e *Error) Error() string {
 	describe := e.codeText
