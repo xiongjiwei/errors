@@ -260,7 +260,7 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 		return Trace(err)
 	}
 	codes := strings.Split(string(err.RFCCode), ":")
-	innerCode := codes[len(codes) - 1]
+	innerCode := codes[len(codes)-1]
 	if i, errAtoi := strconv.Atoi(innerCode); errAtoi == nil {
 		e.code = ErrCode(i)
 	}
@@ -272,9 +272,12 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 }
 
 func (e *Error) Wrap(err error) *Error {
-	newErr := *e
-	newErr.cause = err
-	return &newErr
+	if err != nil {
+		newErr := *e
+		newErr.cause = err
+		return &newErr
+	}
+	return e
 }
 
 func (e *Error) Cause() error {
@@ -287,14 +290,18 @@ func (e *Error) Cause() error {
 
 func (e *Error) FastGenWithCause(args ...interface{}) error {
 	err := *e
-	err.message = e.cause.Error()
+	if e.cause != nil {
+		err.message = e.cause.Error()
+	}
 	err.args = args
 	return SuspendStack(&err)
 }
 
 func (e *Error) GenWithStackByCause(args ...interface{}) error {
 	err := *e
-	err.message = e.cause.Error()
+	if e.cause != nil {
+		err.message = e.cause.Error()
+	}
 	err.args = args
 	err.fillLineAndFile(1)
 	return AddStack(&err)
