@@ -160,5 +160,5 @@ func (*testTErrorSuite) TestWarpAndField(c *C) {
 	causeErr := errors.New("load from etcd meet error")
 	ErrGetLeader := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
 	errWithWarpedCause := errors.Annotate(ErrGetLeader, causeErr.Error())
-	c.Assert(errWithWarpedCause.Error(), Equals, "load from etcd meet error: [member:ErrGetLeader] fail to get leader")
+	c.Assert(errWithWarpedCause.Error(), Equals, "load from etcd meet error: [member:ErrGetLeader]fail to get leader")
 }
