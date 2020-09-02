@@ -114,6 +114,9 @@ func (e *Error) MessageTemplate() string {
 
 // Error implements error interface.
 func (e *Error) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
 	describe := e.codeText
 	if len(describe) == 0 {
 		describe = ErrCodeText(strconv.Itoa(int(e.code)))
