@@ -31,6 +31,50 @@ type ErrCodeText string
 type ErrorID string
 type RFCErrorCode string
 
+// class2RFCCode is used for compatible with old version of TiDB. When
+// marshal Error to json, old version of TiDB contain a 'class' field
+// which is represented for error class. In order to parser and convert
+// json to errors.Error, using this map to convert error class to RFC
+// error code text. here is reference:
+// https://github.com/pingcap/parser/blob/release-3.0/terror/terror.go#L58
+var class2RFCCode = map[int]string{
+	1:  "autoid",
+	2:  "ddl",
+	3:  "domain",
+	4:  "evaluator",
+	5:  "executor",
+	6:  "expression",
+	7:  "admin",
+	8:  "kv",
+	9:  "meta",
+	10: "planner",
+	11: "parser",
+	12: "perfschema",
+	13: "privilege",
+	14: "schema",
+	15: "server",
+	16: "struct",
+	17: "variable",
+	18: "xeval",
+	19: "table",
+	20: "types",
+	21: "global",
+	22: "mocktikv",
+	23: "json",
+	24: "tikv",
+	25: "session",
+	26: "plugin",
+	27: "util",
+}
+var rfcCode2class map[string]int
+
+func init() {
+	rfcCode2class = make(map[string]int)
+	for k, v := range class2RFCCode {
+		rfcCode2class[v] = k
+	}
+}
+
 // Error is the 'prototype' of a type of errors.
 // Use DefineError to make a *Error:
 // var ErrUnavailable = ClassRegion.DefineError().
@@ -227,12 +271,11 @@ func ErrorNotEqual(err1, err2 error) bool {
 }
 
 type jsonError struct {
-	RFCCode     RFCErrorCode `json:"code"`
-	Error       string       `json:"message"`
-	Description string       `json:"description,omitempty"`
-	Workaround  string       `json:"workaround,omitempty"`
-	File        string       `json:"file"`
-	Line        int          `json:"line"`
+	// Deprecated field, please use `RFCCode` instead.
+	Class   int    `json:"class"`
+	Code    int    `json:"code"`
+	Msg     string `json:"message"`
+	RFCCode string `json:"rfccode"`
 }
 
 // MarshalJSON implements json.Marshaler interface.
@@ -241,13 +284,12 @@ type jsonError struct {
 // and the original global registry would be removed here.
 // This function is reserved for compatibility.
 func (e *Error) MarshalJSON() ([]byte, error) {
+	ec := strings.Split(string(e.codeText), ":")[0]
 	return json.Marshal(&jsonError{
-		Error:       e.GetMsg(),
-		Description: e.description,
-		Workaround:  e.workaround,
-		RFCCode:     e.RFCCode(),
-		Line:        e.line,
-		File:        e.file,
+		Class:   rfcCode2class[ec],
+		Code:    int(e.code),
+		Msg:     e.GetMsg(),
+		RFCCode: string(e.codeText),
 	})
 }
 
@@ -257,20 +299,16 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 // and the original global registry is removed.
 // This function is reserved for compatibility.
 func (e *Error) UnmarshalJSON(data []byte) error {
-	err := &jsonError{}
-
-	if err := json.Unmarshal(data, &err); err != nil {
+	tErr := &jsonError{}
+	if err := json.Unmarshal(data, &tErr); err != nil {
 		return Trace(err)
 	}
-	codes := strings.Split(string(err.RFCCode), ":")
-	innerCode := codes[len(codes)-1]
-	if i, errAtoi := strconv.Atoi(innerCode); errAtoi == nil {
-		e.code = ErrCode(i)
+	e.codeText = ErrCodeText(tErr.RFCCode)
+	if tErr.RFCCode == "" && tErr.Class > 0 {
+		e.codeText = ErrCodeText(class2RFCCode[tErr.Class] + ":" + strconv.Itoa(tErr.Code))
 	}
-	e.codeText = ErrCodeText(err.RFCCode)
-	e.line = err.Line
-	e.file = err.File
-	e.message = err.Error
+	e.code = ErrCode(tErr.Code)
+	e.message = tErr.Msg
 	return nil
 }
 
@@ -280,7 +318,7 @@ func (e *Error) Wrap(err error) *Error {
 		newErr.cause = err
 		return &newErr
 	}
-	return e
+	return nil
 }
 
 func (e *Error) Cause() error {
