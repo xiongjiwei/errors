@@ -19,10 +19,12 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"go.uber.org/atomic"
 )
 
 // RedactLogEnabled defines whether the arguments of Error need to be redacted.
-var RedactLogEnabled bool = false
+var RedactLogEnabled atomic.Bool
 
 // ErrCode represents a specific error type in a error class.
 // Same error code can be used in different error classes.
@@ -257,7 +259,7 @@ func (e *Error) NotEqual(err error) bool {
 
 // RedactErrorArg redacts the args by position if RedactLogEnabled is enabled.
 func RedactErrorArg(args []interface{}, position []int) {
-	if RedactLogEnabled {
+	if RedactLogEnabled.Load() {
 		for _, pos := range position {
 			if len(args) > pos {
 				args[pos] = "?"
