@@ -21,7 +21,7 @@ import (
 
 // class2RFCCode is used for compatible with old version of TiDB. When
 // marshal Error to json, old version of TiDB contain a 'class' field
-// which is represented for error class. In order to parser and convert
+// which is represented for error class. In order to parse and convert
 // json to errors.Error, using this map to convert error class to RFC
 // error code text. here is reference:
 // https://github.com/pingcap/parser/blob/release-3.0/terror/terror.go#L58
