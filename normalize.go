@@ -15,9 +15,10 @@ package errors
 
 import (
 	"fmt"
-	"go.uber.org/atomic"
 	"runtime"
 	"strconv"
+
+	"go.uber.org/atomic"
 )
 
 // RedactLogEnabled defines whether the arguments of Error need to be redacted.
