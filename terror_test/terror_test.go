@@ -135,7 +135,7 @@ func (s *testTErrorSuite) TestRFCCode(c *C) {
 	c2err2 := errors.Normalize("nothing", errors.RFCCodeText("TestErr2:Err2"))
 	c.Assert(c1err1.RFCCode(), Equals, errors.RFCErrorCode("TestErr1:Err1"))
 	c.Assert(c2err2.RFCCode(), Equals, errors.RFCErrorCode("TestErr2:Err2"))
-	berr := errors.Normalize("nothing", errors.RFCCodeText("Blank:B1"), errors.Workaround(`Do nothing`))
+	berr := errors.Normalize("nothing", errors.RFCCodeText("Blank:B1"))
 	c.Assert(berr.RFCCode(), Equals, errors.RFCErrorCode("Blank:B1"))
 }
 
