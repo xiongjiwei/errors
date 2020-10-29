@@ -14,13 +14,10 @@
 package errors
 
 import (
-	"encoding/json"
 	"fmt"
+	"go.uber.org/atomic"
 	"runtime"
 	"strconv"
-	"strings"
-
-	"go.uber.org/atomic"
 )
 
 // RedactLogEnabled defines whether the arguments of Error need to be redacted.
@@ -36,59 +33,9 @@ type ErrCodeText string
 type ErrorID string
 type RFCErrorCode string
 
-// class2RFCCode is used for compatible with old version of TiDB. When
-// marshal Error to json, old version of TiDB contain a 'class' field
-// which is represented for error class. In order to parser and convert
-// json to errors.Error, using this map to convert error class to RFC
-// error code text. here is reference:
-// https://github.com/pingcap/parser/blob/release-3.0/terror/terror.go#L58
-var class2RFCCode = map[int]string{
-	1:  "autoid",
-	2:  "ddl",
-	3:  "domain",
-	4:  "evaluator",
-	5:  "executor",
-	6:  "expression",
-	7:  "admin",
-	8:  "kv",
-	9:  "meta",
-	10: "planner",
-	11: "parser",
-	12: "perfschema",
-	13: "privilege",
-	14: "schema",
-	15: "server",
-	16: "struct",
-	17: "variable",
-	18: "xeval",
-	19: "table",
-	20: "types",
-	21: "global",
-	22: "mocktikv",
-	23: "json",
-	24: "tikv",
-	25: "session",
-	26: "plugin",
-	27: "util",
-}
-var rfcCode2class map[string]int
-
-func init() {
-	rfcCode2class = make(map[string]int)
-	for k, v := range class2RFCCode {
-		rfcCode2class[v] = k
-	}
-}
-
 // Error is the 'prototype' of a type of errors.
 // Use DefineError to make a *Error:
-// var ErrUnavailable = ClassRegion.DefineError().
-//		TextualCode("Unavailable").
-//		Description("A certain Raft Group is not available, such as the number of replicas is not enough.\n" +
-//			"This error usually occurs when the TiKV server is busy or the TiKV node is down.").
-//		Workaround("Check the status, monitoring data and log of the TiKV server.").
-//		MessageTemplate("Region %d is unavailable").
-//		Build()
+// var ErrUnavailable = errors.Normalize("Region %d is unavailable", errors.RFCCodeText("Unavailable"))
 //
 // "throw" it at runtime:
 // func Somewhat() error {
@@ -111,14 +58,6 @@ type Error struct {
 	// message is a template of the description of this error.
 	// printf-style formatting is enabled.
 	message string
-	// The workaround field: how to work around this error.
-	// It's used to teach the users how to solve the error if occurring in the real environment.
-	workaround string
-	// description is the expanded detail of why this error occurred.
-	// This could be written by developer at a static env,
-	// and the more detail this field explaining the better,
-	// even some guess of the cause could be included.
-	description string
 	// redactArgsPos defines the positions of arguments in message that need to be redacted.
 	// And it is controlled by the global var RedactLogEnabled.
 	// For example, an original error is `Duplicate entry 'PRIMARY' for key 'key'`,
@@ -303,40 +242,6 @@ type jsonError struct {
 	RFCCode string `json:"rfccode"`
 }
 
-// MarshalJSON implements json.Marshaler interface.
-// aware that this function cannot save a 'registered' status,
-// since we cannot access the registry when unmarshaling,
-// and the original global registry would be removed here.
-// This function is reserved for compatibility.
-func (e *Error) MarshalJSON() ([]byte, error) {
-	ec := strings.Split(string(e.codeText), ":")[0]
-	return json.Marshal(&jsonError{
-		Class:   rfcCode2class[ec],
-		Code:    int(e.code),
-		Msg:     e.GetMsg(),
-		RFCCode: string(e.codeText),
-	})
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface.
-// aware that this function cannot create a 'registered' error,
-// since we cannot access the registry in this context,
-// and the original global registry is removed.
-// This function is reserved for compatibility.
-func (e *Error) UnmarshalJSON(data []byte) error {
-	tErr := &jsonError{}
-	if err := json.Unmarshal(data, &tErr); err != nil {
-		return Trace(err)
-	}
-	e.codeText = ErrCodeText(tErr.RFCCode)
-	if tErr.RFCCode == "" && tErr.Class > 0 {
-		e.codeText = ErrCodeText(class2RFCCode[tErr.Class] + ":" + strconv.Itoa(tErr.Code))
-	}
-	e.code = ErrCode(tErr.Code)
-	e.message = tErr.Msg
-	return nil
-}
-
 func (e *Error) Wrap(err error) *Error {
 	if err != nil {
 		newErr := *e
@@ -374,20 +279,6 @@ func (e *Error) GenWithStackByCause(args ...interface{}) error {
 }
 
 type NormalizeOption func(*Error)
-
-// Description returns a NormalizeOption to set description.
-func Description(desc string) NormalizeOption {
-	return func(e *Error) {
-		e.description = desc
-	}
-}
-
-// Workaround returns a NormalizeOption to set workaround.
-func Workaround(wr string) NormalizeOption {
-	return func(e *Error) {
-		e.workaround = wr
-	}
-}
 
 func RedactArgs(pos []int) NormalizeOption {
 	return func(e *Error) {
