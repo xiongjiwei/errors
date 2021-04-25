@@ -122,7 +122,7 @@ func (s *TErrorTestSuite) TestNewError() {
 	today := time.Now().Weekday().String()
 	err := predefinedTextualErr.GenWithStackByArgs(today)
 	s.NotNil(err)
-	s.Equal("[executor:ExecutorAbsent]executor is taking vacation at " + today, err.Error())
+	s.Equal("[executor:ExecutorAbsent]executor is taking vacation at "+today, err.Error())
 }
 
 func (s *TErrorTestSuite) TestRFCCode() {
@@ -143,7 +143,7 @@ func (s *TErrorTestSuite) TestLineAndFile() {
 
 	file, line := terr.Location()
 	s.Equal(f, file)
-	s.Equal(l -1 , line)
+	s.Equal(l-1, line)
 
 	err2 := predefinedTextualErr.GenWithStackByArgs("everyday and everywhere")
 	_, f2, l2, _ := runtime.Caller(0)
@@ -151,7 +151,7 @@ func (s *TErrorTestSuite) TestLineAndFile() {
 	s.True(ok2)
 	file2, line2 := terr2.Location()
 	s.Equal(f2, file2)
-	s.Equal(l2 - 1, line2)
+	s.Equal(l2-1, line2)
 }
 
 func (s *TErrorTestSuite) TestWarpAndField() {
@@ -164,7 +164,6 @@ func (s *TErrorTestSuite) TestWarpAndField() {
 
 	s.Equal("load from etcd meet error: [member:ErrGetLeader]fail to get leader", errWithCause.Error())
 }
-
 
 func TestExampleTestSuite(t *testing.T) {
 	suite.Run(t, new(TErrorTestSuite))
