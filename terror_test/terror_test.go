@@ -102,7 +102,7 @@ func (s *TErrorTestSuite) TestErrorEqual() {
 	s.Equal(errors.Cause(e3), errors.Cause(e2))
 
 	e4 := errors.New("test error")
-	s.Equal(e1, errors.Cause(e4))
+	s.NotEqual(e1, errors.Cause(e4))
 
 	e5 := errors.Errorf("test error")
 	s.NotEqual(e1, errors.Cause(e5))
