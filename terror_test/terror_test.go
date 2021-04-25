@@ -15,35 +15,30 @@ package terror_test
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/suite"
 	"os"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
 
 const (
-	CodeExecResultIsEmpty  errors.ErrCode = 3
 	CodeMissConnectionID   errors.ErrCode = 1
 	CodeResultUndetermined errors.ErrCode = 2
+	CodeExecResultIsEmpty  errors.ErrCode = 3
 )
 
-func TestT(t *testing.T) {
-	CustomVerboseFlag = true
-	TestingT(t)
+type TErrorTestSuite struct {
+	suite.Suite
 }
 
-var _ = Suite(&testTErrorSuite{})
-
-type testTErrorSuite struct {
-}
-
-func (s *testTErrorSuite) TestErrCode(c *C) {
-	c.Assert(CodeMissConnectionID, Equals, errors.ErrCode(1))
-	c.Assert(CodeResultUndetermined, Equals, errors.ErrCode(2))
+func (s *TErrorTestSuite) TestErrCode() {
+	s.Equal(CodeMissConnectionID, errors.ErrCode(1))
+	s.Equal(CodeResultUndetermined, errors.ErrCode(2))
+	s.Equal(CodeExecResultIsEmpty, errors.ErrCode(3))
 }
 
 var predefinedErr = errors.Normalize("predefiend error", errors.MySQLErrorCode(123))
@@ -58,19 +53,19 @@ func call() error {
 	return predefinedErr.GenWithStack("error message:%s", "abc")
 }
 
-func (s *testTErrorSuite) TestJson(c *C) {
+func (s *TErrorTestSuite) TestJson() {
 	tmpErr := errors.Normalize("this is a test error", errors.RFCCodeText("ddl:-1"), errors.MySQLErrorCode(-1))
 	buf, err := json.Marshal(tmpErr)
-	c.Assert(err, IsNil)
+	s.Nil(err)
 	var curTErr errors.Error
 	err = json.Unmarshal(buf, &curTErr)
-	c.Assert(err, IsNil)
+	s.Nil(err)
 	isEqual := tmpErr.Equal(&curTErr)
-	c.Assert(curTErr.Error(), Equals, tmpErr.Error())
-	c.Assert(isEqual, IsTrue)
+	s.Equal(curTErr.Error(), tmpErr.Error())
+	s.True(isEqual)
 }
 
-func (s *testTErrorSuite) TestTraceAndLocation(c *C) {
+func (s *TErrorTestSuite) TestTraceAndLocation() {
 	err := example()
 	stack := errors.ErrorStack(err)
 	lines := strings.Split(stack, "\n")
@@ -81,7 +76,7 @@ func (s *testTErrorSuite) TestTraceAndLocation(c *C) {
 			sysStack++
 		}
 	}
-	c.Assert(len(lines)-(2*sysStack), Equals, 15, Commentf("stack =\n%s", stack))
+	s.Equalf(13, len(lines)-(2*sysStack), "stack = \n%s", stack)
 	var containTerr bool
 	for _, v := range lines {
 		if strings.Contains(v, "terror_test.go") {
@@ -89,77 +84,87 @@ func (s *testTErrorSuite) TestTraceAndLocation(c *C) {
 			break
 		}
 	}
-	c.Assert(containTerr, IsTrue)
+	s.True(containTerr)
 }
 
-func (s *testTErrorSuite) TestErrorEqual(c *C) {
+func (s *TErrorTestSuite) TestErrorEqual() {
 	e1 := errors.New("test error")
-	c.Assert(e1, NotNil)
+	s.NotNil(e1)
 
 	e2 := errors.Trace(e1)
-	c.Assert(e2, NotNil)
+	s.NotNil(e2)
 
 	e3 := errors.Trace(e2)
-	c.Assert(e3, NotNil)
+	s.NotNil(e3)
 
-	c.Assert(errors.Cause(e2), Equals, e1)
-	c.Assert(errors.Cause(e3), Equals, e1)
-	c.Assert(errors.Cause(e2), Equals, errors.Cause(e3))
+	s.Equal(e1, errors.Cause(e2))
+	s.Equal(e1, errors.Cause(e3))
+	s.Equal(errors.Cause(e3), errors.Cause(e2))
 
 	e4 := errors.New("test error")
-	c.Assert(errors.Cause(e4), Not(Equals), e1)
+	s.NotEqual(e1, errors.Cause(e4))
 
 	e5 := errors.Errorf("test error")
-	c.Assert(errors.Cause(e5), Not(Equals), e1)
+	s.NotEqual(e1, errors.Cause(e5))
 
-	c.Assert(errors.ErrorEqual(e1, e2), IsTrue)
-	c.Assert(errors.ErrorEqual(e1, e3), IsTrue)
-	c.Assert(errors.ErrorEqual(e1, e4), IsTrue)
-	c.Assert(errors.ErrorEqual(e1, e5), IsTrue)
+	s.True(errors.ErrorEqual(e1, e2))
+	s.True(errors.ErrorEqual(e1, e3))
+	s.True(errors.ErrorEqual(e1, e4))
+	s.True(errors.ErrorEqual(e1, e5))
 
 	var e6 error
 
-	c.Assert(errors.ErrorEqual(nil, nil), IsTrue)
-	c.Assert(errors.ErrorNotEqual(e1, e6), IsTrue)
+	s.True(errors.ErrorEqual(nil, nil))
+	s.True(errors.ErrorNotEqual(e1, e6))
 }
 
-func (s *testTErrorSuite) TestNewError(c *C) {
+func (s *TErrorTestSuite) TestNewError() {
 	today := time.Now().Weekday().String()
 	err := predefinedTextualErr.GenWithStackByArgs(today)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "[executor:ExecutorAbsent]executor is taking vacation at "+today)
+	s.NotNil(err)
+	s.Equal("[executor:ExecutorAbsent]executor is taking vacation at "+today, err.Error())
 }
 
-func (s *testTErrorSuite) TestRFCCode(c *C) {
+func (s *TErrorTestSuite) TestRFCCode() {
 	c1err1 := errors.Normalize("nothing", errors.RFCCodeText("TestErr1:Err1"))
 	c2err2 := errors.Normalize("nothing", errors.RFCCodeText("TestErr2:Err2"))
-	c.Assert(c1err1.RFCCode(), Equals, errors.RFCErrorCode("TestErr1:Err1"))
-	c.Assert(c2err2.RFCCode(), Equals, errors.RFCErrorCode("TestErr2:Err2"))
+	s.Equal(errors.RFCErrorCode("TestErr1:Err1"), c1err1.RFCCode())
+	s.Equal(errors.RFCErrorCode("TestErr2:Err2"), c2err2.RFCCode())
+
 	berr := errors.Normalize("nothing", errors.RFCCodeText("Blank:B1"))
-	c.Assert(berr.RFCCode(), Equals, errors.RFCErrorCode("Blank:B1"))
+	s.Equal(errors.RFCErrorCode("Blank:B1"), berr.RFCCode())
 }
 
-func (*testTErrorSuite) TestLineAndFile(c *C) {
+func (s *TErrorTestSuite) TestLineAndFile() {
 	err := predefinedTextualErr.GenWithStackByArgs("everyday")
 	_, f, l, _ := runtime.Caller(0)
 	terr, ok := errors.Cause(err).(*errors.Error)
-	c.Assert(ok, IsTrue)
+	s.True(ok)
+
 	file, line := terr.Location()
-	c.Assert(file, Equals, f)
-	c.Assert(line, Equals, l-1)
+	s.Equal(f, file)
+	s.Equal(l-1, line)
 
 	err2 := predefinedTextualErr.GenWithStackByArgs("everyday and everywhere")
 	_, f2, l2, _ := runtime.Caller(0)
 	terr2, ok2 := errors.Cause(err2).(*errors.Error)
-	c.Assert(ok2, IsTrue)
+	s.True(ok2)
 	file2, line2 := terr2.Location()
-	c.Assert(file2, Equals, f2)
-	c.Assert(line2, Equals, l2-1)
+	s.Equal(f2, file2)
+	s.Equal(l2-1, line2)
 }
 
-func (*testTErrorSuite) TestWarpAndField(c *C) {
-	causeErr := errors.New("load from etcd meet error")
-	ErrGetLeader := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
-	errWithWarpedCause := errors.Annotate(ErrGetLeader, causeErr.Error())
-	c.Assert(errWithWarpedCause.Error(), Equals, "load from etcd meet error: [member:ErrGetLeader]fail to get leader")
+func (s *TErrorTestSuite) TestWarpAndField() {
+	cause := errors.New("load from etcd meet error")
+	s.NotNil(cause)
+
+	err := errors.Normalize("fail to get leader", errors.RFCCodeText("member:ErrGetLeader"))
+	errWithCause := errors.Annotate(err, cause.Error())
+	s.NotNil(errWithCause)
+
+	s.Equal("load from etcd meet error: [member:ErrGetLeader]fail to get leader", errWithCause.Error())
+}
+
+func TestExampleTestSuite(t *testing.T) {
+	suite.Run(t, new(TErrorTestSuite))
 }

@@ -2,8 +2,7 @@ package errors_test
 
 import (
 	"fmt"
-
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 func ExampleNew() {
