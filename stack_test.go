@@ -27,7 +27,7 @@ func TestFrameLine(t *testing.T) {
 			var pc, _, _, _ = runtime.Caller(1)
 			return Frame(pc)
 		}(),
-		29,
+		24,
 	}, {
 		Frame(0), // invalid PC
 		0,
