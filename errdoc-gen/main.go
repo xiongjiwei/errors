@@ -30,6 +30,7 @@ var opt struct {
 	source     string
 	module     string
 	output     string
+	ignore     string
 	retainCode bool
 }
 
@@ -37,6 +38,7 @@ func init() {
 	flag.StringVar(&opt.source, "source", "", "The source directory of error documentation")
 	flag.StringVar(&opt.module, "module", "", "The module name of target repository")
 	flag.StringVar(&opt.output, "output", "", "The output path of error documentation file")
+	flag.StringVar(&opt.ignore, "ignore", "", "Directories to ignore, splitted by comma")
 	flag.BoolVar(&opt.retainCode, "retain-code", false, "Retain the generated code when generator exit")
 }
 
@@ -242,11 +244,20 @@ func errdoc(source, module string) ([]*errDecl, error) {
 
 	dedup := map[string]*errDecl{}
 
+	ignored := strings.Split(opt.ignore, ",")
+	for i := range ignored {
+		ignored[i] = filepath.Join(source, ignored[i])
+	}
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
+			for i := range ignored {
+				if ignored[i] == path {
+					return filepath.SkipDir
+				}
+			}
 			return nil
 		}
 		if !strings.HasSuffix(path, ".go") {
