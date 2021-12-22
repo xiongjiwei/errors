@@ -128,6 +128,10 @@ func (e *Error) GetMsg() string {
 	return e.message
 }
 
+func (e *Error) GetArgs() []interface{} {
+	return e.args
+}
+
 func (e *Error) fillLineAndFile(skip int) {
 	// skip this
 	_, file, line, ok := runtime.Caller(skip + 1)
